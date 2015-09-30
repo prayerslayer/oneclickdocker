@@ -12,6 +12,8 @@
                  [environ "1.0.1"]
                  ; web server
                  [ring "1.4.0"]
+                 ; docker
+                 [com.github.docker-java/docker-java "2.1.1"]
                  ; logging
                  [org.clojure/tools.logging "0.3.1"]
                  [org.apache.logging.log4j/log4j-api "2.3"]
