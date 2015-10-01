@@ -6,8 +6,9 @@ apt-get update
 apt-get install -y docker.io
 
 # enable remote api
+export DOCKER_HOST="tcp://0.0.0.0:4243"
 echo "" >> /etc/default/docker.io
-echo 'DOCKER_OPTS="-H tcp://0.0.0.0:4243 -H unix:///var/run/docker.sock -d"' >> /etc/default/docker.io
+echo 'DOCKER_HOST="tcp://0.0.0.0:4243"' >> /etc/default/docker.io
 service docker.io restart
 
 # install java
