@@ -11,5 +11,5 @@
 ;   (let [images (docker/list-images "http://192.168.59.103:2375")]
 ;     (println (pr-str images))))
 
-(deftest test-create-container
+(deftest test-run-container
   (docker/run-container "tutum/hello-world"))

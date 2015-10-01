@@ -1,17 +1,28 @@
 (ns ocd-host-agent.docker-api
-  (:import [com.github.dockerjava.core DockerClientConfig]
+  (:import [com.github.dockerjava.core DockerClientConfig
+                                       DockerClientBuilder]
+           [com.github.dockerjava.jaxrs DockerCmdExecFactoryImpl]
            [com.github.dockerjava.api.model ExposedPort
                                             Ports]))
 
-(def client
-  (-> (DockerClientConfig/createDefaultConfigBuilder)
-      (.withUri "http://192.168.59.103:2375")
-      (.build)))
+(defn get-client
+  []
+  (let [config (-> (DockerClientConfig/createDefaultConfigBuilder)
+                   (.withUri "http://localhost:4342")
+                   (.build))
+        factory (-> (DockerCmdExecFactoryImpl.)
+                    (.withReadTimeout (int 1000))
+                    (.withWriteTimeout (int 1000)))]
+    (-> (DockerClientBuilder/getInstance config)
+        (.withDockerCmdExecFactory factory)
+        (.build))))
+
+(def client (get-client))
 
 (defn get-default-exposed-ports
   []
-  [ssh (ExposedPort/tcp 22)
-   web (ExposedPort/tcp 8080)])
+  [(ExposedPort/tcp 22)
+   (ExposedPort/tcp 8080)])
 
 (defn get-default-port-bindings
   [ssh web]
