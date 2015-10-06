@@ -95,6 +95,15 @@
     (catch Exception e
       (println (pr-str (ex-data e))))))
 
+(defn list-containers
+  []
+  (try
+    (let [request (curl/get "http://127.0.0.1:4243/containers/json?all=true")]
+      (when (= 200 (:status request))
+        (json/decode (:body request) true)))
+    (catch Exception e
+      (println (pr-str (ex-data e))))))
+
 ; (defn stop-container
 ;   [container]
 ;   (-> (.stopContainerCmd client (:id container))
