@@ -7,9 +7,9 @@
 ;   (let [containers (docker/list-containers)]
 ;     (println (pr-str containers))))
 
-; (deftest test-list-images
-;   (let [images (docker/list-images "http://192.168.59.103:2375")]
-;     (println (pr-str images))))
+(deftest test-list-images
+  (let [images (docker/list-images)]
+    (println (pr-str images))))
 
 ; (deftest test-run-container
 ;   (docker/run-container "tutum/hello-world"))
@@ -17,13 +17,13 @@
 ; (deftest test-list-images
 ;   (println (pr-str (docker/list-images))))
 
-(deftest test-pull
-  (docker/pull "tutum/hello-world" nil))
+; (deftest test-pull
+;   (docker/pull "tutum/hello-world" nil))
 
 ; (deftest test-create-container
 ;   (println (pr-str (docker/create-container "tutum/hello-world"))))
 
-; (deftest test-downloaded?
-;   (is (= (docker/downloaded? "tutum/hello-world") true))
-;   (is (= (docker/downloaded? "tutum/hello-world:latest") true))
-;   (is (= (docker/downloaded? "ubuntu") false)))
+(deftest test-downloaded?
+  (is (= (docker/downloaded? "tutum/hello-world") true))
+  (is (= (docker/downloaded? "tutum/hello-world:latest") true))
+  (is (= (docker/downloaded? "ubuntu") false)))

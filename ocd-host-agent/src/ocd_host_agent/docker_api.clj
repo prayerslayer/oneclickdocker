@@ -63,13 +63,6 @@
 
 (println (json/encode default-container-config))
 
-(def find-first
-  (comp first filter))
-
-
-(defn list-images
-  [])
-
 (defn pull
   [repository tag]
   (try 
@@ -80,17 +73,6 @@
         (json/decode (:body request))))
     (catch Exception e
       (println (pr-str (ex-data e))))))
-
-(defn downloaded?
-  [repository]
-  (let [[repo tag] (str/split repository #":")
-        local-images (list-images)
-        tags (flatten (map :repoTags local-images))]
-    (->> tags
-         (some #(= % (if-not tag
-                             (str repo ":latest")
-                             repository)))
-         (boolean))))
 
 (defn create-container
   [repository]
@@ -106,11 +88,33 @@
 (defn list-containers
   []
   (try
-    (let [request (curl/get "http://127.0.0.1:4243/containers/json?all=true")]
+    (let [request (curl/get "http://127.0.0.1:4243/containers/json"
+                            {:query-params {"all" true}})]
       (when (= 200 (:status request))
         (json/decode (:body request) true)))
     (catch Exception e
       (println (pr-str (ex-data e))))))
+
+(defn list-images
+  []
+  (try
+    (let [request (curl/get "http://127.0.0.1:4243/images/json"
+                            {:query-params {"all" true}})]
+      (when (= 200 (:status request))
+        (json/decode (:body request) true)))
+    (catch Exception e
+      (println (pr-str (ex-data e))))))
+
+(defn downloaded?
+  [repository]
+  (let [[repo tag] (str/split repository #":")
+        local-images (list-images)
+        tags (flatten (map :RepoTags local-images))]
+    (->> tags
+         (some #(= % (if-not tag
+                             (str repo ":latest")
+                             repository)))
+         (boolean))))
 
 ; (defn stop-container
 ;   [container]
