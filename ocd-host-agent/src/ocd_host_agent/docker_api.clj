@@ -71,7 +71,15 @@
   [])
 
 (defn pull
-  [repository])
+  [repository tag]
+  (try 
+    (let [request (curl/post (str "http://127.0.0.1:4243/images/create")
+                             {:query-params {"fromImage" repository
+                                             "tag" (or tag "latest")}})]
+      (when (= 200 (:status request))
+        (json/decode (:body request))))
+    (catch Exception e
+      (println (pr-str (ex-data e))))))
 
 (defn downloaded?
   [repository]
