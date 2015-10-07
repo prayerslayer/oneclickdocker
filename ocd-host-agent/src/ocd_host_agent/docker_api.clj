@@ -8,9 +8,10 @@
   (comp not nil?)) 
 
 (def default-container-config
-  {"Hostname" ""
-   "Domainname" ""
-   "User" ""
+  {
+   ; "Hostname" ""
+   ; "Domainname" ""
+   ; "User" ""
    "AttachStdout" true
    "AttachStderr" true
    "AttachStdin" false
@@ -19,16 +20,17 @@
    "StdinOnce" false
    "Env" []
    "Cmd" ["date"] ; shouldn't this be obvious from the dockerfile
-   "Entrypoint" "" ; this too
-   "Image" "c833a1892a15"
+   ; "Entrypoint" "" ; this too
+   "Image" ""
    "Labels" {}
-   "Mounts" []
-   "WorkingDir" ""
+   ; "Mounts" []
+   "WorkingDir" "/"
    "NetworkDisabled" false
-   "MacAddress" "12:34:56:78:9a:bc" ; seriously
+   ; "MacAddress" "12:34:56:78:9a:bc" ; seriously
    "ExposedPorts" { "8080/tcp" {} }
-   "HostConfig" {"Binds" []
-                 "Links" []
+   "HostConfig" {
+                 ; "Binds" []
+                 ; "Links" []
                  ; what is this
                  ; "LxcConf" {"lxc.utsname" "docker"}
                  ; "Memory" 0
@@ -46,25 +48,62 @@
                  "Privileged" false
                  "ReadonlyRootfs" false
                  "Dns" ["8.8.8.8"]
-                 "DnsSearch" [""]
-                 "ExtraHosts" nil
-                 "VolumesFrom" []
-                 "CapAdd" ["NET_ADMIN"]
-                 "CapDrop" ["MKNOD"]
-                 "RestartPolicy" {"Name" ""
+                 ; "DnsSearch" [""]
+                 ; "ExtraHosts" nil
+                 ; "VolumesFrom" []
+                 ; "CapAdd" ["NET_ADMIN"]
+                 ; "CapDrop" ["MKNOD"]
+                 "RestartPolicy" {"Name" "NoRetry"
                                   "MaximumRetryCount" 0 }
                  "NetworkMode" "bridge"
-                 "Devices" []
-                 "Ulimits" [{}]
+                 ; "Devices" []
+                 ; "Ulimits" [{}]
                  "LogConfig" {"Type" "json-file"
                               "Config" {} }
-                 "SecurityOpt" []
-                 "CgroupParent" ""}})
+                 ; "SecurityOpt" []
+                 ; "CgroupParent" ""
+                 }})
 
 (println (json/encode default-container-config))
 
+(def find-first
+  (comp first filter))
+
+(defn list-images
+  []
+  (try
+    (let [request (curl/get "http://127.0.0.1:4243/images/json"
+                            {:query-params {"all" true}})]
+      (when (= 200 (:status request))
+        (json/decode (:body request) true)))
+    (catch Exception e
+      (println (pr-str (ex-data e))))))
+
+(defn get-image
+  [repository tag]
+  (let [tag (or tag "latest")
+        images (list-images)]
+    (->> images
+         ; remove those with repo tag none
+         (remove #(and (= 1 (count (:RepoTags %)))
+                       (= "<none>:<none>" (first (:RepoTags %)))))
+         ; first of those which contains correct tag
+         (filter (fn [image]
+                   (some #(= % (str repository ":" tag)) (:RepoTags image))))
+         (first))))
+
+(defn downloaded?
+  [repository tag]
+  (let [tag (or tag "latest")
+        local-images (list-images)
+        tags (flatten (map :RepoTags local-images))]
+    (->> tags
+         (some #(= % (str repository tag)))
+         (boolean))))
+
 (defn pull
   [repository tag]
+  ; TODO wrap this up in if-success macro
   (try 
     (let [request (curl/post (str "http://127.0.0.1:4243/images/create")
                              {:query-params {"fromImage" repository
@@ -75,10 +114,14 @@
       (println (pr-str (ex-data e))))))
 
 (defn create-container
-  [repository]
+  [repository tag]
   (try
-    (let [request (curl/post "http://127.0.0.1:4243/containers/create"
-                             {:body (json/encode default-container-config)
+    (when-not (downloaded? repository tag)
+      (pull repository tag))
+    (let [image (get-image repository tag)
+          config (merge default-container-config {"Image" (:Id image)})
+          request (curl/post "http://127.0.0.1:4243/containers/create"
+                             {:body (json/encode config)
                               :content-type :json})]
       (when (= 201 (:status request))
         (json/decode (:body request) true)))
@@ -94,27 +137,6 @@
         (json/decode (:body request) true)))
     (catch Exception e
       (println (pr-str (ex-data e))))))
-
-(defn list-images
-  []
-  (try
-    (let [request (curl/get "http://127.0.0.1:4243/images/json"
-                            {:query-params {"all" true}})]
-      (when (= 200 (:status request))
-        (json/decode (:body request) true)))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
-
-(defn downloaded?
-  [repository]
-  (let [[repo tag] (str/split repository #":")
-        local-images (list-images)
-        tags (flatten (map :RepoTags local-images))]
-    (->> tags
-         (some #(= % (if-not tag
-                             (str repo ":latest")
-                             repository)))
-         (boolean))))
 
 ; (defn stop-container
 ;   [container]
