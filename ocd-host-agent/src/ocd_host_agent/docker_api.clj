@@ -2,10 +2,35 @@
   (:require [clojure.string :as str]
             [clj-http.lite.client :as curl]
             [clojure.tools.logging :as log]
+            [environ.core :refer [env]]
             [cheshire.core :as json]))
 
+(def base-url
+  (or (env :docker-url)
+      "http://127.0.0.1:4243"))
+
 (def not-nil?
-  (comp not nil?)) 
+  (comp not nil?))
+
+(def find-first
+  (comp first filter))
+
+(defmacro return-on-success
+  [req]
+  `(try
+     (let [request# ~req
+           status# (:status request#)]
+       (when (and (>= status# 200)
+                  (< status# 300))
+         (if (some? (:body request#))
+           (json/decode (:body request#) true)
+           true)))
+     (catch Exception e#
+       (log/debug (pr-str (ex-data e#))))))
+
+(defn url
+  [& path]
+  (str base-url (apply str path)))
 
 (def default-container-config
   {
@@ -64,25 +89,10 @@
                  ; "CgroupParent" ""
                  }})
 
-; (println (json/encode default-container-config))
-
-(defmacro return-on-success
-  [req]
-  `(try
-     (let [request# ~req
-           status# (:status request#)]
-       (when (and (>= status# 200)
-                  (< status# 300))
-         (json/decode (:body request#) true)))
-     (catch Exception e#
-       (println (pr-str (ex-data e#))))))
-
-(def find-first
-  (comp first filter))
 
 (defn list-images
   []
-  (return-on-success (curl/get "http://127.0.0.1:4243/images/json"
+  (return-on-success (curl/get (url "/images/json")
                                {:query-params {"all" true}})))
 
 (defn get-image
@@ -109,44 +119,62 @@
 
 (defn pull
   [repository tag]
-  (println (str "Pulling image " repository ":" tag))
-  (return-on-success (curl/post (str "http://127.0.0.1:4243/images/create")
-                                     {:query-params {"fromImage" repository
-                                                     "tag" (or tag "latest")}})))
+  (log/debug (str "Pulling image " repository ":" tag))
+  (return-on-success (curl/post (url "/images/create")
+                                {:query-params {"fromImage" repository
+                                                "tag" (or tag "latest")}})))
 
 (defn create-container
   [repository tag]
-  (println (str "Creating container from " repository ":" tag))
+  (log/debug (str "Creating container from " repository ":" tag))
   (when-not (downloaded? repository tag)
     (pull repository tag))
   (let [image (get-image repository tag)
         config (merge default-container-config {"Image" (:Id image)})]
-    (return-on-success (curl/post "http://127.0.0.1:4243/containers/create"
-                                   {:body (json/encode config)
-                                    :content-type :json}))))
+    (return-on-success (curl/post (url "/containers/create")
+                                  {:body (json/encode config)
+                                   :content-type :json}))))
 
 (defn list-containers
   []
   (return-on-success (curl/get "http://127.0.0.1:4243/containers/json"
                                {:query-params {"all" true}})))
 
-; (defn stop-container
-;   [container]
-;   (-> (.stopContainerCmd client (:id container))
-;       (.exec)))
+(defn stop-container
+  [container]
+  {:pre [(not-nil? container)]}
+  (log/debug (str "Stopping container " (:Id container)))
+  (when (return-on-success (curl/post (url "/containers/"
+                                           (:Id container)
+                                           "/stop")))
+    container))
 
-; (defn kill-container
-;   [container]
-;   (-> (.killContainerCmd client (:id container))
-;       (.exec)))
+(defn restart-container
+  [container]
+  {:pre [(not-nil? container)]}
+  (log/debug (str "Restarting container " (:Id container)))
+  (when (return-on-success (curl/post (url "/containers/"
+                                           (:Id container)
+                                           "/restart")))
+    container))
+
+(defn kill-container
+  [container]
+  {:pre [(not-nil? container)]}
+  (log/debug (str "Killing container " (:Id container)))
+  (when (return-on-success (curl/post (url "/containers/"
+                                           (:Id container)
+                                           "/kill")))
+    container))
 
 (defn start-container
   [container]
   {:pre [(not-nil? container)]}
-  (println (str "Starting container " (:Id container)))
-  (when (return-on-success (curl/post (str "http://127.0.0.1:4243/containers/"
+  (log/debug (str "Starting container " (:Id container)))
+  (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/start")))
+    (log/debug "Start OK")
     container))
 
 (defn run-container

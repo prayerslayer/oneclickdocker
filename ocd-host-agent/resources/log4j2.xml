@@ -7,7 +7,7 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="ocd-host-agent" level="info"/>
+        <Logger name="ocd-host-agent" level="debug"/>
 
         <Root level="debug">
             <AppenderRef ref="Console"/>

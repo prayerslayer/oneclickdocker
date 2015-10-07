@@ -3,6 +3,9 @@
             [ocd-host-agent.core :refer :all]
             [ocd-host-agent.docker-api :as docker]))
 
+; TODO proper integration test with docker daemon
+
+
 ; (deftest test-list-containers
 ;   (let [containers (docker/list-containers)]
 ;     (println (pr-str containers))))
