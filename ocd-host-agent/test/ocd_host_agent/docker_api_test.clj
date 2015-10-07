@@ -4,26 +4,29 @@
             [ocd-host-agent.docker-api :as docker]))
 
 ; (deftest test-list-containers
-;   (let [containers (docker/list-containers "http://192.168.59.103:2375")]
+;   (let [containers (docker/list-containers)]
 ;     (println (pr-str containers))))
 
 ; (deftest test-list-images
-;   (let [images (docker/list-images "http://192.168.59.103:2375")]
+;   (let [images (docker/list-images)]
 ;     (println (pr-str images))))
 
 (deftest test-run-container
-  (docker/run-container "tutum/hello-world"))
+  (docker/run-container "tutum/hello-world" nil))
 
 ; (deftest test-list-images
 ;   (println (pr-str (docker/list-images))))
 
 ; (deftest test-pull
-;   (println (pr-str (docker/pull-image "tutum/hello-world"))))
+;   (docker/pull "tutum/hello-world" nil))
 
 ; (deftest test-create-container
-;   (println (pr-str (docker/create-container "tutum/hello-world"))))
+;   (println (:Id (docker/create-container "tutum/hello-world" nil))))
 
 ; (deftest test-downloaded?
 ;   (is (= (docker/downloaded? "tutum/hello-world") true))
-;   (is (= (docker/downloaded? "tutum/hello-world:latest") true))
+;   (is (= (docker/downloaded? "tutum/hello-world" "latest") true))
 ;   (is (= (docker/downloaded? "ubuntu") false)))
+
+; (deftest test-get-image
+;   (is (= true (.startsWith (:Id (docker/get-image "tutum/hello-world" nil)) "c833a1892a15"))))
