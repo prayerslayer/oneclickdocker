@@ -11,8 +11,8 @@
 ;   (let [images (docker/list-images)]
 ;     (println (pr-str images))))
 
-; (deftest test-run-container
-;   (docker/run-container "tutum/hello-world"))
+(deftest test-run-container
+  (docker/run-container "tutum/hello-world" nil))
 
 ; (deftest test-list-images
 ;   (println (pr-str (docker/list-images))))
@@ -20,8 +20,8 @@
 ; (deftest test-pull
 ;   (docker/pull "tutum/hello-world" nil))
 
-(deftest test-create-container
-  (println (:Id (docker/create-container "tutum/hello-world" nil))))
+; (deftest test-create-container
+;   (println (:Id (docker/create-container "tutum/hello-world" nil))))
 
 ; (deftest test-downloaded?
 ;   (is (= (docker/downloaded? "tutum/hello-world") true))

@@ -46,7 +46,7 @@
                                  "22/tcp" [{ "HostPort" "22"}] }
                  "PublishAllPorts" false
                  "Privileged" false
-                 "ReadonlyRootfs" false
+                 ; "ReadonlyRootfs" false
                  "Dns" ["8.8.8.8"]
                  ; "DnsSearch" [""]
                  ; "ExtraHosts" nil
@@ -64,7 +64,7 @@
                  ; "CgroupParent" ""
                  }})
 
-(println (json/encode default-container-config))
+; (println (json/encode default-container-config))
 
 (def find-first
   (comp first filter))
@@ -154,13 +154,21 @@
   (try
     (let [req (curl/post (str "http://127.0.0.1:4243/containers/" (:Id container) "/start"))]
       (when (= 204 (:status req))
-        (println "YEAH")))
+        (println "YEAH")
+        container))
     (catch Exception e
       (println (pr-str (ex-data e))))))
 
 (defn run-container
-  [repository]
-  ; TODO check if it's there, but stopped
-  (-> repository
-      (create-container)
-      (start-container)))
+  [repository tag]
+  ; check if container is there but stopped
+  (let [tag (or tag "latest")
+        containers (list-containers)
+        container (find-first #(= (:Image %)
+                                  (str repository ":" tag))
+                              containers)]
+    (if (some? container)
+      (start-container container)
+      (-> repository
+          (create-container tag)
+          (start-container)))))
