@@ -66,18 +66,24 @@
 
 ; (println (json/encode default-container-config))
 
+(defmacro return-on-success
+  [req]
+  `(try
+     (let [request# ~req
+           status# (:status request#)]
+       (when (and (>= status# 200)
+                  (< status# 300))
+         (json/decode (:body request#) true)))
+     (catch Exception e#
+       (println (pr-str (ex-data e#))))))
+
 (def find-first
   (comp first filter))
 
 (defn list-images
   []
-  (try
-    (let [request (curl/get "http://127.0.0.1:4243/images/json"
-                            {:query-params {"all" true}})]
-      (when (= 200 (:status request))
-        (json/decode (:body request) true)))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
+  (return-on-success (curl/get "http://127.0.0.1:4243/images/json"
+                               {:query-params {"all" true}})))
 
 (defn get-image
   [repository tag]
@@ -103,40 +109,26 @@
 
 (defn pull
   [repository tag]
-  ; TODO wrap this up in if-success macro
-  (try 
-    (let [request (curl/post (str "http://127.0.0.1:4243/images/create")
-                             {:query-params {"fromImage" repository
-                                             "tag" (or tag "latest")}})]
-      (when (= 200 (:status request))
-        (json/decode (:body request))))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
+  (println (str "Pulling image " repository ":" tag))
+  (return-on-success (curl/post (str "http://127.0.0.1:4243/images/create")
+                                     {:query-params {"fromImage" repository
+                                                     "tag" (or tag "latest")}})))
 
 (defn create-container
   [repository tag]
-  (try
-    (when-not (downloaded? repository tag)
-      (pull repository tag))
-    (let [image (get-image repository tag)
-          config (merge default-container-config {"Image" (:Id image)})
-          request (curl/post "http://127.0.0.1:4243/containers/create"
-                             {:body (json/encode config)
-                              :content-type :json})]
-      (when (= 201 (:status request))
-        (json/decode (:body request) true)))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
+  (println (str "Creating container from " repository ":" tag))
+  (when-not (downloaded? repository tag)
+    (pull repository tag))
+  (let [image (get-image repository tag)
+        config (merge default-container-config {"Image" (:Id image)})]
+    (return-on-success (curl/post "http://127.0.0.1:4243/containers/create"
+                                   {:body (json/encode config)
+                                    :content-type :json}))))
 
 (defn list-containers
   []
-  (try
-    (let [request (curl/get "http://127.0.0.1:4243/containers/json"
-                            {:query-params {"all" true}})]
-      (when (= 200 (:status request))
-        (json/decode (:body request) true)))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
+  (return-on-success (curl/get "http://127.0.0.1:4243/containers/json"
+                               {:query-params {"all" true}})))
 
 ; (defn stop-container
 ;   [container]
@@ -151,13 +143,11 @@
 (defn start-container
   [container]
   {:pre [(not-nil? container)]}
-  (try
-    (let [req (curl/post (str "http://127.0.0.1:4243/containers/" (:Id container) "/start"))]
-      (when (= 204 (:status req))
-        (println "YEAH")
-        container))
-    (catch Exception e
-      (println (pr-str (ex-data e))))))
+  (println (str "Starting container " (:Id container)))
+  (when (return-on-success (curl/post (str "http://127.0.0.1:4243/containers/"
+                                           (:Id container)
+                                           "/start")))
+    container))
 
 (defn run-container
   [repository tag]
