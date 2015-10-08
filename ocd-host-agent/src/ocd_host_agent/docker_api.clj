@@ -25,7 +25,7 @@
            (json/decode (:body request#) true)
            true)))
      (catch Exception e#
-       (log/debug (pr-str (ex-data e#))))))
+       (println (pr-str (ex-data e#))))))
 
 (defn url
   [& path]
@@ -118,14 +118,14 @@
 
 (defn pull
   [repository tag]
-  (log/debug (str "Pulling image " repository ":" tag))
+  (println (str "Pulling image " repository ":" tag))
   (return-on-success (curl/post (url "/images/create")
                                 {:query-params {"fromImage" repository
                                                 "tag" (or tag "latest")}})))
 
 (defn create-container
   [repository tag]
-  (log/debug (str "Creating container from " repository ":" tag))
+  (println (str "Creating container from " repository ":" tag))
   (when-not (downloaded? repository tag)
     (pull repository tag))
   (let [image (get-image repository tag)
@@ -142,7 +142,7 @@
 (defn stop-container
   [container]
   {:pre [(not-nil? container)]}
-  (log/debug (str "Stopping container " (:Id container)))
+  (println (str "Stopping container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/stop")))
@@ -151,7 +151,7 @@
 (defn restart-container
   [container]
   {:pre [(not-nil? container)]}
-  (log/debug (str "Restarting container " (:Id container)))
+  (println (str "Restarting container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/restart")))
@@ -160,7 +160,7 @@
 (defn kill-container
   [container]
   {:pre [(not-nil? container)]}
-  (log/debug (str "Killing container " (:Id container)))
+  (println (str "Killing container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/kill")))
@@ -169,11 +169,11 @@
 (defn start-container
   [container]
   {:pre [(not-nil? container)]}
-  (log/debug (str "Starting container " (:Id container)))
+  (println (str "Starting container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/start")))
-    (log/debug "Start OK")
+    (println "Start OK")
     container))
 
 (defn run-container
