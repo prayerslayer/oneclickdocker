@@ -1,6 +1,5 @@
 (ns ocd-host-agent.docker-api
-  (:require [clojure.string :as str]
-            [clj-http.lite.client :as curl]
+  (:require [clj-http.lite.client :as curl]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             [cheshire.core :as json]))

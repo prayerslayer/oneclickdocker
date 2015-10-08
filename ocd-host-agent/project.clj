@@ -12,6 +12,8 @@
                  [environ "1.0.1"]
                  ; web server
                  [ring "1.4.0"]
+                 ; redis
+                 [com.taoensso/carmine "2.12.0"]
                  ; logging
                  [org.clojure/tools.logging "0.3.1"]
                  [org.apache.logging.log4j/log4j-api "2.3"]
