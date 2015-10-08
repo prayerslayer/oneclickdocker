@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
+mkdir /apps
 apt-get update
 
 # install docker
-apt-get install curl
+apt-get install -y curl
 curl -sSL https://get.docker.com/ | sh
 usermod -aG docker vagrant
 # enable remote api
@@ -16,6 +17,18 @@ echo 'DOCKER_OPTS="-s aufs -H tcp://0.0.0.0:4243 -D"' >> /etc/default/docker
 # kernel extras for device driver
 apt-get install "linux-image-extra-$(uname -r)"
 service docker restart
+
+
+# install redis
+apt-get install -y wget tcl
+wget http://download.redis.io/releases/redis-3.0.4.tar.gz
+tar xzf redis-3.0.4.tar.gz
+cd redis-3.0.4
+make
+make test
+mv redis-3.0.4 /apps
+chmod a+x -R /apps/redis-3.0.4
+export PATH=$PATH:/apps/redis-3.0.4/src/
 
 # install java
 # TODO switch to java 8 as soon as it is in repo
