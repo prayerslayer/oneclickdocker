@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [clojure.string :as str]
             [overtone.at-at :as at]
+            [cheshire.core :as json]
             [environ.core :refer [env]]
             [ocd-host-agent.docker-api :as docker]
             [com.stuartsierra.component :as component]
@@ -31,19 +32,31 @@
   [& body]
   `(redis/wcar redis-conn ~@body))
 
-(defn deconstruct-image
+(defn parse-image
   [image]
   (let [[repo tag] (str/split image #":")
         tag (or tag "latest")]
     [repo tag]))
 
+(defn hmap->clj
+  [hmap]
+  (when-not (nil? hmap)
+    (->> hmap
+         (partition 2)
+         (map #(assoc {} (keyword (first %))
+                         (second %)))
+         (reduce merge))))
+
 (defn poll-redis
   []
   (println "polling redis")
-  (let [run-image (wcar* (redis/rpop run-container-list))]
-    (when run-image
-      (println "Found image " run-image " to run")
-      (apply docker/run-container (deconstruct-image run-image)))))
+  (let [task-id (wcar* (redis/rpop run-container-list))]
+    (when task-id
+      (println "Found task " task-id " to run")
+      (let [task (hmap->clj (wcar* (redis/hgetall task-id)))]
+        (when task
+          (apply docker/run-container (conj (parse-image (:image task))
+                                            {"Labels" task})))))))
 
 (defrecord Redis
            [host port]

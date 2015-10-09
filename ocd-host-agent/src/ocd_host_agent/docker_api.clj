@@ -124,12 +124,14 @@
                                                 "tag" (or tag "latest")}})))
 
 (defn create-container
-  [repository tag]
+  [repository & [tag config]]
   (println (str "Creating container from " repository ":" tag))
   (when-not (downloaded? repository tag)
     (pull repository tag))
   (let [image (get-image repository tag)
-        config (merge default-container-config {"Image" (:Id image)})]
+        config (merge default-container-config
+                      config
+                      {"Image" (:Id image)})]
     (return-on-success (curl/post (url "/containers/create")
                                   {:body (json/encode config)
                                    :content-type :json}))))
@@ -177,7 +179,7 @@
     container))
 
 (defn run-container
-  [repository tag]
+  [repository & [tag config]]
   ; check if container is there but stopped
   (let [tag (or tag "latest")
         containers (list-containers)
@@ -187,5 +189,5 @@
     (if (some? container)
       (start-container container)
       (-> repository
-          (create-container tag)
+          (create-container tag config)
           (start-container)))))
