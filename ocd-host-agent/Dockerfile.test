@@ -1,0 +1,7 @@
+FROM tutum/hello-world
+
+WORKDIR /
+RUN echo -n 'php-fpm -d variables_order="EGPCS" && exec nginx -g "daemon off;"' > start.sh
+RUN chmod a+x /start.sh
+
+CMD ./start.sh

@@ -8,22 +8,18 @@
   (or (env :docker-url)
       "http://127.0.0.1:4243"))
 
-(def not-nil?
-  (comp not nil?))
-
-(def find-first
-  (comp first filter))
-
 (defmacro return-on-success
   [req]
   `(try
      (let [request# ~req
            status# (:status request#)]
-       (when (and (>= status# 200)
-                  (< status# 300))
-         (if (some? (:body request#))
+       (println "STATUS" status#)
+       (if (and (>= status# 200)
+                (< status# 300))
+         (if (seq (:body request#))
            (json/decode (:body request#) true)
-           true)))
+           true)
+         (println "WARN: Status" status# "was returned." (:body request#))))
      (catch Exception e#
        (println (pr-str (ex-data e#))))))
 
@@ -43,7 +39,7 @@
    "OpenStdin" false
    "StdinOnce" false
    "Env" []
-   "Cmd" ["date"] ; shouldn't this be obvious from the dockerfile
+   "Cmd" ["/bin/sh" "-c" "./start.sh"] ; TODO login to docker registry, read image
    ; "Entrypoint" "" ; this too
    "Image" ""
    "Labels" {}
@@ -51,7 +47,7 @@
    "WorkingDir" "/"
    "NetworkDisabled" false
    ; "MacAddress" "12:34:56:78:9a:bc" ; seriously
-   "ExposedPorts" { "8080/tcp" {} }
+   "ExposedPorts" { "80/tcp" {} }
    "HostConfig" {
                  ; "Binds" []
                  ; "Links" []
@@ -66,7 +62,7 @@
                  ; "BlkioWeight" 300
                  ; "MemorySwappiness" 60
                  ; "OomKillDisable" false
-                 "PortBindings" {"8080/tcp" [{ "HostPort" "8080" }]
+                 "PortBindings" {"80/tcp" [{ "HostPort" "8080" }]
                                  "22/tcp" [{ "HostPort" "22"}] }
                  "PublishAllPorts" false
                  "Privileged" false
@@ -95,7 +91,7 @@
                                {:query-params {"all" true}})))
 
 (defn get-image
-  [repository tag]
+  [repository & [tag]]
   (let [tag (or tag "latest")
         images (list-images)]
     (->> images
@@ -108,20 +104,22 @@
          (first))))
 
 (defn downloaded?
-  [repository tag]
+  [repository & [tag]]
   (let [tag (or tag "latest")
         local-images (list-images)
         tags (flatten (map :RepoTags local-images))]
+    (println "Checking if " repository ":" tag "in" (pr-str tags))
     (->> tags
-         (some #(= % (str repository tag)))
+         (some #(= % (str repository ":" tag)))
          (boolean))))
 
 (defn pull
-  [repository tag]
-  (println (str "Pulling image " repository ":" tag))
-  (return-on-success (curl/post (url "/images/create")
-                                {:query-params {"fromImage" repository
-                                                "tag" (or tag "latest")}})))
+  [repository & [tag]]
+  (let [tag (or tag "latest")]
+    (println (str "Pulling image " repository ":" tag))
+    (return-on-success (curl/post (url "/images/create")
+                                  {:query-params {"fromImage" repository
+                                                  "tag" tag}}))))
 
 (defn create-container
   [repository & [tag config]]
@@ -143,34 +141,47 @@
 
 (defn stop-container
   [container]
-  {:pre [(not-nil? container)]}
+  {:pre [(some? container)]}
   (println (str "Stopping container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/stop")))
+    (println "Stop OK")
     container))
 
 (defn restart-container
   [container]
-  {:pre [(not-nil? container)]}
+  {:pre [(some? container)]}
   (println (str "Restarting container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/restart")))
+    (println "Restart OK")
     container))
 
 (defn kill-container
   [container]
-  {:pre [(not-nil? container)]}
+  {:pre [(some? container)]}
   (println (str "Killing container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
                                            "/kill")))
+    (println "Kill OK")
     container))
+
+(defn delete-container
+  [container]
+  {:pre [(some? container)]}
+  (println (str "Deleting container " (:Id container)))
+  (when (return-on-success (curl/delete (url "/containers/"
+                                             (:Id container))
+                                        {:query-params {"force" true}}))
+    (println "Delete OK")
+    true))
 
 (defn start-container
   [container]
-  {:pre [(not-nil? container)]}
+  {:pre [(some? container)]}
   (println (str "Starting container " (:Id container)))
   (when (return-on-success (curl/post (url "/containers/"
                                            (:Id container)
@@ -183,9 +194,10 @@
   ; check if container is there but stopped
   (let [tag (or tag "latest")
         containers (list-containers)
-        container (find-first #(= (:Image %)
+        container (some #(when (= (:Image %)
                                   (str repository ":" tag))
-                              containers)]
+                          %)
+                        containers)]
     (if (some? container)
       (start-container container)
       (-> repository
