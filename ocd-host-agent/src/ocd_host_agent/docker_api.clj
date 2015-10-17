@@ -90,6 +90,11 @@
   (return-on-success (curl/get (url "/images/json")
                                {:query-params {"all" true}})))
 
+(defn list-image
+  [id]
+  {:pre (some? id)}
+  (return-on-success (curl/get (url "/images/" id "/json"))))
+
 (defn get-image
   [repository & [tag]]
   (let [tag (or tag "latest")
@@ -134,9 +139,14 @@
                                   {:body (json/encode config)
                                    :content-type :json}))))
 
+(defn list-container
+  [id]
+  {:pre (some? id)}
+  (return-on-success (curl/get (url "/containers/" id "/json"))))
+
 (defn list-containers
   []
-  (return-on-success (curl/get "http://127.0.0.1:4243/containers/json"
+  (return-on-success (curl/get (url "/containers/json")
                                {:query-params {"all" true}})))
 
 (defn stop-container
