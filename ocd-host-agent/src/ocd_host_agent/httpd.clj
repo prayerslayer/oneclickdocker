@@ -1,5 +1,5 @@
 (ns ocd-host-agent.httpd
-  (:require [ocd-host-agent.handler :as handler]
+  (:require [ocd-host-agent.http :as handler]
             [ring.adapter.jetty :refer [run-jetty]]
             [clojure.tools.logging :as log]
             [com.stuartsierra.component :as component]))
@@ -15,10 +15,10 @@
            (assoc component :http server)))
 
   (stop [component]
-        (do 
+        (do
           (log/info "Stopping Jetty...")
           (.stop (:http component))
           (assoc component :http nil))))
 
-(defn new-http [port]
+(defn new-httpd [port]
   (map->HttpServer {:port port}))

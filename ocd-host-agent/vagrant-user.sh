@@ -10,3 +10,5 @@ lein
 export DOCKER_HOST="tcp://0.0.0.0:4243"
 export DOCKER_OPTS="-s aufs -H tcp://0.0.0.0:4243 -D"
 export PATH=$PATH:/apps/redis-3.0.4/src/
+
+redis-server

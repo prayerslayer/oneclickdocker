@@ -12,6 +12,8 @@
                  [environ "1.0.1"]
                  ; web server
                  [ring "1.4.0"]
+                 [ring/ring-json "0.4.0"]
+                 [compojure "1.4.0"]
                  ; redis
                  [com.taoensso/carmine "2.12.0"]
                  ; logging
@@ -24,4 +26,5 @@
                  [org.apache.logging.log4j/log4j-jul "2.3"]]
   :main ^:skip-aot ocd-host-agent.core
   :target-path "target"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}}
+  :aliases {"start" ["run"]})
