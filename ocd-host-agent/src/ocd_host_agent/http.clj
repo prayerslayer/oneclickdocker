@@ -1,6 +1,5 @@
 (ns ocd-host-agent.http
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json]
             [compojure.core :refer :all]
             [compojure.route :as route]
             [ocd-host-agent.docker-api :as docker])
@@ -39,11 +38,30 @@
     (->> (docker/list-containers)
          (map #(docker/list-container (:Id %)))
          (map #(assoc % :Image (docker/list-image (:Image %))
-                        :Metadata (json/decode (:Labels %))))
+                        :Metadata (get-in % [:Config :Labels])
+                        :Name (.substring (:Name %) 1) ; strip leading slash
+                        :Tags (->> (docker/list-images)
+                                   (filter (fn [i] (= (:Id i)
+                                                      (:Image %))))
+                                   first
+                                   :RepoTags)
+                        :Port (get-in % [:HostConfig
+                                         :PortBindings
+                                         (keyword (str docker/DEFAULT_CONTAINER_PORT)
+                                                  "tcp")
+                                         0
+                                         :HostPort
+                                         (Integer/parseInt)])))
          (map (partial keep-keys [:Id
+                                  :Created
+                                  :Name
+                                  :Metadata
+                                  :Tags
+                                  :Port
                                   :State
                                   [:Image :Id]
-                                  [:Image :Parent]])))))
+                                  [:Image :Parent]]))
+         )))
 
 ; GET /containers ; for monitoring
 ;   >> id, port, user, status, image, health info von container (CPU/MEMORY/DISK)

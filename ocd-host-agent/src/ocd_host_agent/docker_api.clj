@@ -27,7 +27,7 @@
   [& path]
   (str base-url (apply str path)))
 
-(def default-container-config
+(def DEFAULT_CONTAINER_CONFIG
   {
    ; "Hostname" ""
    ; "Domainname" ""
@@ -62,8 +62,7 @@
                  ; "BlkioWeight" 300
                  ; "MemorySwappiness" 60
                  ; "OomKillDisable" false
-                 "PortBindings" {"80/tcp" [{ "HostPort" "8080" }]
-                                 "22/tcp" [{ "HostPort" "22"}] }
+                 "PortBindings" {"22/tcp" [{ "HostPort" "22"}] }
                  "PublishAllPorts" false
                  "Privileged" false
                  ; "ReadonlyRootfs" false
@@ -84,6 +83,10 @@
                  ; "CgroupParent" ""
                  }})
 
+(def DEFAULT_CONTAINER_PORT 80)
+(def MINIMUM_HOST_PORT
+  (or (env :docker-min-host-port)
+      10000))
 
 (defn list-images
   []
@@ -94,6 +97,16 @@
   [id]
   {:pre (some? id)}
   (return-on-success (curl/get (url "/images/" id "/json"))))
+
+(defn list-container
+  [id]
+  {:pre (some? id)}
+  (return-on-success (curl/get (url "/containers/" id "/json"))))
+
+(defn list-containers
+  []
+  (return-on-success (curl/get (url "/containers/json")
+                               {:query-params {"all" true}})))
 
 (defn get-image
   [repository & [tag]]
@@ -126,28 +139,62 @@
                                   {:query-params {"fromImage" repository
                                                   "tag" tag}}))))
 
+(defn- lowest-fitting-number
+  "Returns lowest number that fits in between numbers.
+   E.g. for 9 5 2 7 that would be 3."
+  [numbers & [min-value]]
+  (let [find-lowest (fn [a b]
+                      (if (> (Math/abs (- a b))
+                             1)
+                        (-> (Math/min a b)
+                            inc
+                            reduced) ; stops reduction
+                        b))
+        numbers (sort numbers)
+        port (reduce find-lowest
+                     (or min-value 0)
+                     numbers)]
+    (if (= port (last numbers))
+      ; no free port found
+      (inc port)
+      ; free port found
+      port)))
+
+(defn- get-used-ports
+  "Returns used host ports based on container configs"
+  []
+  (->> (list-containers)
+       (map #(list-container (:Id %)))
+       (map :HostConfig)
+       (map :PortBindings)
+       (mapcat vals)
+       (mapcat identity)
+       (map #(get % :HostPort))
+       (map #(Integer/parseInt %))
+       (set)
+       (sort)))
+
+(defn- get-unused-host-port-config
+  "Returns HostConfig with default container port bound to unused host port"
+  []
+  (let [port (lowest-fitting-number (get-used-ports)
+                                    MINIMUM_HOST_PORT)]
+    {"HostConfig" {"PortBindings" {(str DEFAULT_CONTAINER_PORT "/tcp") [{ "HostPort" (str port)}] }}}))
+
+
 (defn create-container
   [repository & [tag config]]
   (println (str "Creating container from " repository ":" tag))
   (when-not (downloaded? repository tag)
     (pull repository tag))
   (let [image (get-image repository tag)
-        config (merge default-container-config
+        config (merge DEFAULT_CONTAINER_CONFIG
+                      (get-unused-host-port-config)
                       config
                       {"Image" (:Id image)})]
     (return-on-success (curl/post (url "/containers/create")
                                   {:body (json/encode config)
                                    :content-type :json}))))
-
-(defn list-container
-  [id]
-  {:pre (some? id)}
-  (return-on-success (curl/get (url "/containers/" id "/json"))))
-
-(defn list-containers
-  []
-  (return-on-success (curl/get (url "/containers/json")
-                               {:query-params {"all" true}})))
 
 (defn stop-container
   [container]

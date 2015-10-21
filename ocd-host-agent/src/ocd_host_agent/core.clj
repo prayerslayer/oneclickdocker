@@ -1,5 +1,6 @@
 (ns ocd-host-agent.core
   (:require [ocd-host-agent.httpd :as httpd]
+            [ocd-host-agent.redis :as redis]
             [environ.core :refer [env]]
             [com.stuartsierra.component :as component])
   (:gen-class))
@@ -10,9 +11,10 @@
 
 (defn- run
   []
-  (let [system (component/system-map :httpd (httpd/new-httpd http-port))]
+  (let [system (component/system-map :redis (redis/new-redis)
+                                     :httpd (httpd/new-httpd http-port))]
     (component/start system)))
-  
+
 
 (defn -main
   []

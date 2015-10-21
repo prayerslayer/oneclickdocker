@@ -15,7 +15,7 @@
            (assoc component :http server)))
 
   (stop [component]
-        (do 
+        (do
           (log/info "Stopping Jetty...")
           (.stop (:http component))
           (assoc component :http nil))))

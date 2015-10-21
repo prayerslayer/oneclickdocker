@@ -11,12 +11,14 @@
 
 (def at-pool (at/mk-pool))
 
-(def minute (* 1000 60))
+(def one-second 1000)
 
-(def hour (* 1000 60 60))
+(def one-minute (* one-second 60))
 
-(def run-container-list
-  "run-container-list")
+(def one-hour (* one-minute 60))
+
+(def task-queue
+  "TQUEUE")
 
 (def redis-host
   (or (env :redis-host) "127.0.0.1"))
@@ -43,30 +45,30 @@
   (when-not (nil? hmap)
     (->> hmap
          (partition 2)
-         (map #(assoc {} (keyword (first %))
+         (map #(assoc {} (first %)
                          (second %)))
          (reduce merge))))
 
 (defn poll-redis
   []
   (println "polling redis")
-  (let [task-id (wcar* (redis/rpop run-container-list))]
+  (let [task-id (wcar* (redis/rpop task-queue))]
     (when task-id
       (println "Found task " task-id " to run")
       (let [task (hmap->clj (wcar* (redis/hgetall task-id)))]
         (when task
-          (apply docker/run-container (conj (parse-image (:image task))
+          (apply docker/run-container (conj (parse-image (get task "image"))
                                             {"Labels" task})))))))
 
 (defrecord Redis
-           [host port]
+           []
            component/Lifecycle
   (start [component]
     (println "starting redis client" (pr-str redis-conn))
-    (at/every minute
+    (at/every one-minute
               poll-redis
               at-pool
-              :initial-delay (int (rand-int minute)))
+              :initial-delay (int (rand-int one-minute)))
     (assoc component :redis redis-conn))
 
   (stop [component]
@@ -75,6 +77,5 @@
     (assoc component :redis nil)))
 
 (defn new-redis
-  [host port]
-  (map->Redis {:host host
-               :port port}))
+  []
+  (map->Redis {}))

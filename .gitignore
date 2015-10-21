@@ -1,2 +1,2 @@
-
-ocd-host-agent/src/ocd_host_agent/.DS_Store
+*.rdb
+**/.DS_Store
