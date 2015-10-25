@@ -103,10 +103,63 @@
   {:pre (some? id)}
   (return-on-success (curl/get (url "/containers/" id "/json"))))
 
+
+(defn- to-collection
+  [thing]
+  (if-not (or (list? thing)
+              (vector? thing))
+    (vector thing)
+    (into (vector) thing)))
+
+(defn- set-in-path
+  [obj path]
+  (let [value (last path)
+        ks (drop-last path)]
+    (assoc-in obj ks value)))
+
+(defn- keep-keys
+  [paths thing]
+  ; set value at path
+  (reduce set-in-path
+          {}
+          ; take paths and append value to them
+          (->> paths
+              (map to-collection)
+              (map (fn [x]
+                     (conj x (get-in thing x)))))))
+
 (defn list-containers
   []
-  (return-on-success (curl/get (url "/containers/json")
-                               {:query-params {"all" true}})))
+  (let [containers (return-on-success (curl/get (url "/containers/json")
+                                                {:query-params {"all" true}}))]
+    (if (nil? containers)
+      []
+      (->> containers
+           (map #(list-container (:Id %)))
+           (map #(assoc % :Image (list-image (:Image %))
+                          :Metadata (get-in % [:Config :Labels])
+                          :Name (.substring (:Name %) 1) ; strip leading slash
+                          :Tags (->> (list-images)
+                                     (filter (fn [i] (= (:Id i)
+                                                        (:Image %))))
+                                     first
+                                     :RepoTags)
+                          :Port (-> (get-in % [:HostConfig
+                                               :PortBindings
+                                               (keyword (str DEFAULT_CONTAINER_PORT)
+                                                        "tcp")
+                                               0
+                                               :HostPort])
+                                    (Integer/parseInt))))
+           (map (partial keep-keys [:Id
+                                    :Created
+                                    :Name
+                                    :Metadata
+                                    :Tags
+                                    :Port
+                                    :State
+                                    [:Image :Id]
+                                    [:Image :Parent]]))))))
 
 (defn get-image
   [repository & [tag]]

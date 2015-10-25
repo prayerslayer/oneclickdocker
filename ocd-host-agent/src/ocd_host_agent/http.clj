@@ -8,59 +8,10 @@
         ring.middleware.reload
         ring.middleware.stacktrace))
 
-(defn to-collection
-  [thing]
-  (if-not (or (list? thing)
-              (vector? thing))
-    (vector thing)
-    (into (vector) thing)))
-
-(defn set-in-path
-  [obj path]
-  (let [value (last path)
-        ks (drop-last path)]
-    (assoc-in obj ks value)))
-
-(defn keep-keys
-  [paths thing]
-  ; set value at path
-  (reduce set-in-path
-          {}
-          ; take paths and append value to them
-          (->> paths
-              (map to-collection)
-              (map (fn [x]
-                     (conj x (get-in thing x)))))))
-
 (def get-containers
   (GET "/containers"
     []
-    (->> (docker/list-containers)
-         (map #(docker/list-container (:Id %)))
-         (map #(assoc % :Image (docker/list-image (:Image %))
-                        :Metadata (get-in % [:Config :Labels])
-                        :Name (.substring (:Name %) 1) ; strip leading slash
-                        :Tags (->> (docker/list-images)
-                                   (filter (fn [i] (= (:Id i)
-                                                      (:Image %))))
-                                   first
-                                   :RepoTags)
-                        :Port (-> (get-in % [:HostConfig
-                                             :PortBindings
-                                             (keyword (str docker/DEFAULT_CONTAINER_PORT)
-                                                      "tcp")
-                                             0
-                                             :HostPort])
-                                  (Integer/parseInt))))
-         (map (partial keep-keys [:Id
-                                  :Created
-                                  :Name
-                                  :Metadata
-                                  :Tags
-                                  :Port
-                                  :State
-                                  [:Image :Id]
-                                  [:Image :Parent]])))))
+    (docker/list-containers)))
 
 (def alter-container-status
   (POST "/containers"

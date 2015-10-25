@@ -10,6 +10,8 @@
                  [cheshire "5.5.0"]
                  ; environment variables
                  [environ "1.0.1"]
+                 ; time
+                 [clj-time "0.11.0"]
                  ; web server
                  [ring "1.4.0"]
                  [ring/ring-json "0.4.0"]
