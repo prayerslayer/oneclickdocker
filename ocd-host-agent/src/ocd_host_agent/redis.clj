@@ -11,30 +11,35 @@
             [com.stuartsierra.component :as component]
             [taoensso.carmine :as redis]))
 
-(def redis-pool (at/mk-pool))
+(def REDIS_POOL (at/mk-pool))
 
-(def one-second 1000)
+(def ONE_SECOND 1000)
 
-(def one-minute (* one-second 60))
+(def ONE_MINUTE (* ONE_SECOND 60))
 
-(def one-hour (* one-minute 60))
+(def ONE_HOUR (* ONE_MINUTE 60))
 
-(def task-queue
+(def TASK_QUEUE
   "TQUEUE")
 
-(def redis-host
-  (or (env :redis-host) "127.0.0.1"))
+(def HOST_NAME
+  (or (env :host-name)
+      "donkey"))
 
-(def redis-port
+(def REDIS_HOST
+  (or (env :redis-host)
+      "127.0.0.1"))
+
+(def REDIS_POST
   (or (env :redis-port) 6379))
 
-(def redis-conn {:pool {}
-                 :spec {:host redis-host
-                        :port redis-port}})
+(def REDIS_CONN {:pool {}
+                 :spec {:host REDIS_HOST
+                        :port REDIS_POST}})
 
 (defmacro wcar*
   [& body]
-  `(redis/wcar redis-conn ~@body))
+  `(redis/wcar REDIS_CONN ~@body))
 
 (defn parse-image
   [image]
@@ -54,7 +59,7 @@
 (defn poll-redis
   []
   (println "polling redis")
-  (let [task-id (wcar* (redis/rpop task-queue))]
+  (let [task-id (wcar* (redis/rpop TASK_QUEUE))]
     (when task-id
       (println "Found task " task-id " to run")
       (let [task (hmap->clj (wcar* (redis/hgetall task-id)))]
@@ -121,6 +126,7 @@
           (println "writing to" key)
           (wcar* (redis/sadd (str "USR;" user) container-id))
           (wcar* (redis/hmset key "port" (:Port container)
+                                  "host" HOST_NAME
                                   "created_at" (:Created container)
                                   "name" (:Name container)
                                   "id" container-id
@@ -137,18 +143,18 @@
            []
            component/Lifecycle
   (start [component]
-    (println "starting redis client" (pr-str redis-conn))
-    (at/every one-minute
+    (println "starting redis client" (pr-str REDIS_CONN))
+    (at/every ONE_MINUTE
               poll-redis
-              redis-pool
-              :initial-delay (int (rand-int one-minute)))
-    (at/every (* 10 one-second)
+              REDIS_POOL
+              :initial-delay (int (rand-int ONE_MINUTE)))
+    (at/every (* 10 ONE_SECOND)
               push-redis
-              redis-pool)
-    (at/every one-minute
+              REDIS_POOL)
+    (at/every ONE_MINUTE
               gargabe-collect
-              redis-pool)
-    (assoc component :redis redis-conn))
+              REDIS_POOL)
+    (assoc component :redis REDIS_CONN))
 
   (stop [component]
     (println "stopping redis client")

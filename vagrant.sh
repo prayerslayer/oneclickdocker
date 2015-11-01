@@ -8,8 +8,8 @@ apt-get install -y curl
 curl -sSL https://get.docker.com/ | sh
 usermod -aG docker vagrant
 # enable remote api
-export DOCKER_HOST="tcp://0.0.0.0:4243"
-export DOCKER_OPTS="-s aufs -H tcp://0.0.0.0:4243 -d -D"
+echo 'export DOCKER_HOST="tcp://0.0.0.0:4243"' >> ~/.profile
+echo 'export DOCKER_OPTS="-s aufs -H tcp://0.0.0.0:4243 -d -D"' >> ~/.profile
 echo "" >> /etc/default/docker
 echo 'DOCKER_HOST="tcp://0.0.0.0:4243"' >> /etc/default/docker
 echo "" >> /etc/default/docker
@@ -26,13 +26,20 @@ tar xzf redis-3.0.4.tar.gz
 cd redis-3.0.4
 make
 make test
+cd ..
 mv redis-3.0.4 /apps
 chmod a+x -R /apps/redis-3.0.4
-export PATH=$PATH:/apps/redis-3.0.4/src/
+echo 'export PATH=$PATH:/apps/redis-3.0.4/src/' >> ~/.profile
 
 # install java
 # TODO switch to java 8 as soon as it is in repo
 apt-get install -y openjdk-7-jdk 
+
+# install nodejs
+apt-get install -y nodejs npm
+ln -s /usr/bin/nodejs /usr/bin/node
+
+source ~/.profile
 
 # i dunno?
 if ! [ -L /var/www ]; then
