@@ -1,0 +1,9 @@
+html
+  head
+    title= "HELLO"
+  body
+    h1= "WORLD"
+    if user
+        span= user.profile.username
+    else
+        a(href="/auth/github")= "Login"
