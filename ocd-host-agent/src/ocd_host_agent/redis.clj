@@ -123,21 +123,25 @@
                        (t/within? (-> 1 t/weeks t/ago)
                                   (t/now)
                                   time))
-          (println "writing to" key)
-          (wcar* (redis/sadd (str "USR;" user) container-id))
-          (wcar* (redis/hmset key "port" (:Port container)
-                                  "host" HOST_NAME
-                                  "created_at" (:Created container)
-                                  "name" (:Name container)
-                                  "id" container-id
-                                  "image" (:Id (:Image container))
-                                  "tag" (first (:Tags container))
-                                  "status" (.toLowerCase (:Status status))
-                                  (if (= "Stopped"
-                                         (:Status status))
-                                    "finished_at"
-                                    "started_at")
-                                  (:Time status))))))))
+          (let [data ["port" (:Port container)
+                      "host" HOST_NAME
+                      "created_at" (:Created container)
+                      "name" (:Name container)
+                      "id" container-id
+                      "image" (:Id (:Image container))
+                      "tag" (first (:Tags container))
+                      "status" (.toLowerCase (:Status status))
+                      (if (= "Stopped"
+                             (:Status status))
+                          "finished_at"
+                          "started_at")
+                      (:Time status)]]
+            (println "writing to" key)
+            ; publish message as json
+            (wcar* (redis/publish key (json/encode (hmap->clj data))))
+            ; persist also in set and hash
+            (wcar* (redis/sadd (str "USR;" user) container-id))
+            (wcar* (apply redis/hmset (into (vector key) data)))))))))
 
 (defrecord Redis
            []

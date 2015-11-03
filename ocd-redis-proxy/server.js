@@ -17,8 +17,6 @@ REDIS_CLIENT.on('error', function() {
     winston.error.apply(winston, arguments);
 });
 
-
-
 app.use(bodyParser.json());
 app.get('/', function(req, res) {
     return res.status(200).send("OK");
@@ -120,9 +118,21 @@ app.delete('/containers/:user/:container/?', function(req, res) {
             })
             .catch(defaultErrorHandler(res));
         })
-        .catch(defaultErrorHandler(res));;
+        .catch(defaultErrorHandler(res));
     })
-    .catch(defaultErrorHandler(res));;
+    .catch(defaultErrorHandler(res));
 });
 
-app.listen(process.env.PORT || 3000);
+
+// ====== socket.io kram
+
+var server = require('http').createServer(app),
+    io = require('socket.io')(server);
+
+REDIS_CLIENT.psubscribe('CNT;*');
+REDIS_CLIENT.on('pmessage', function(pattern, channel, message) {
+    var p = pattern.split(';');
+    io.to(p[1]).emit(message);
+});
+
+server.listen(process.env.PORT || 3000);
