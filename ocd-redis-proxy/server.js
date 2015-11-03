@@ -90,6 +90,7 @@ app.post('/containers/:user/?', function(req, res) {
             REDIS_CLIENT.del(id);
             return defaultErrorHandler(res)(err);
         }
+        winston.info('Created task', id, 'for user', user, '(Image ', body.image, ')');
         return res.status(201).send();
     });
 });
@@ -127,12 +128,19 @@ app.delete('/containers/:user/:container/?', function(req, res) {
 // ====== socket.io kram
 
 var server = require('http').createServer(app),
+    REDIS_SUB = redis.createClient(),
     io = require('socket.io')(server);
 
-REDIS_CLIENT.psubscribe('CNT;*');
-REDIS_CLIENT.on('pmessage', function(pattern, channel, message) {
-    var p = pattern.split(';');
-    io.to(p[1]).emit(message);
+io.on('connect', function(socket) {
+    socket.join(socket.handshake.query.user);
+    winston.info('connection established', socket.handshake.query.user);
+});
+
+REDIS_SUB.psubscribe('CNT;*', function() {
+    REDIS_SUB.on('pmessage', function(pattern, channel, message) {
+        var p = channel.split(';');
+        io.to(p[1]).emit('message', JSON.parse(message));
+    });
 });
 
 server.listen(process.env.PORT || 3000);

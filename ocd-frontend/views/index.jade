@@ -4,6 +4,8 @@ html
   body
     h1= "WORLD"
     if user
-        span= user.profile.username
+      form(action="/start-container", method="POST")
+        input(type="text", name="image")
+        button(type="submit")= "Start"
     else
-        a(href="/auth/github")= "Login"
+      a(href="/auth/github")= "Login"

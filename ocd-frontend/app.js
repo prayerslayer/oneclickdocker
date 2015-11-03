@@ -1,5 +1,9 @@
 var express = require('express'),
+    superagent = require('superagent'),
     cookieParser = require('cookie-parser'),
+    cookieSession = require('cookie-session'),
+    Promise = require('bluebird'),
+    bodyParser = require('body-parser'),
     session = require('express-session'),
     authRoutes = require('./routes/auth'),
     indexRoute = require('./routes/index'),
@@ -8,8 +12,21 @@ var express = require('express'),
     app = express();
 
 
+function loggedIn(req, res, next) {
+    if (!!req.user) {
+        next();
+    }
+    return res.redirect('/');
+}
+
+app.use(express.static(__dirname + '/public'));
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
 app.use(cookieParser());
-app.use(session({secret: process.env.SESSION_SECRET || 'mysecret'}));
+app.use(cookieSession({
+    keys: ['key1', 'key2']
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 app.set('view engine', 'jade');
@@ -19,9 +36,7 @@ passport.use(new GithubLogin({
     clientSecret: process.env.GH_CLIENT_SECRET,
     callbackURL: 'http://localhost:4000/auth/github/callback'
 }, function(accessToken, refreshToken, profile, done){
-    done(null, {
-        profile: profile
-    });
+    done(null, profile);
 }));
 
 passport.serializeUser(function(user, done) {
@@ -39,5 +54,27 @@ app.get('/auth/github/callback',
     authRoutes.success);
 
 app.get('/', indexRoute);
+app.get('/error', function(req, res) {
+    res.render('error');
+});
+
+function dashboard(req, res) {
+    res.render('dashboard', {
+        user: req.user
+    });
+};
+
+app.get('/dashboard', dashboard);
+
+app.get('/start-container', dashboard);
+app.post('/start-container', loggedIn, function(req, res) {
+    superagent
+    .post('http://localhost:4322/containers/' + req.user.username)
+    .send({
+        user: req.user.username,
+        image: req.body.image
+    })
+    .end();
+});
 
 app.listen(4000);

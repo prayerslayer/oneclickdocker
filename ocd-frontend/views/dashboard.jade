@@ -1,0 +1,17 @@
+html
+  head
+    title= "ERROR"
+    script(src="http://localhost:4322/socket.io/socket.io.js")
+    script.
+        var socket = io("http://localhost:4322", {
+            query: "user=prayerslayer"
+        });
+        socket.on("error", console.error.bind(console));
+        socket.on("connect", function() {
+            console.log('connected');
+            socket.on("message", function() {
+                console.log(arguments);
+            })
+        });
+  body
+    h1= ":)"

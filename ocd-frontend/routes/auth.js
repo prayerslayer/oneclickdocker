@@ -3,10 +3,10 @@ var db = require('../db');
 module.exports.success = function(req, res) {
     db
     .saveUserAsync([
-        req.user.profile.id,
-        req.user.profile.username,
-        req.user.profile.emails[0].value,
-        req.user.profile.displayName,
+        req.user.id,
+        req.user.username,
+        req.user.emails[0].value,
+        req.user.displayName,
         null,
         null
     ])

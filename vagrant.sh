@@ -33,7 +33,7 @@ echo 'export PATH=$PATH:/apps/redis-3.0.4/src/' >> ~/.profile
 
 # install java
 # TODO switch to java 8 as soon as it is in repo
-apt-get install -y openjdk-7-jdk 
+apt-get install -y openjdk-7-jdk
 
 # install nodejs
 apt-get install -y nodejs npm
